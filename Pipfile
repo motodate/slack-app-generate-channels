@@ -1,0 +1,16 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+slack-sdk = "*"
+
+[dev-packages]
+pytest = "*"
+black = "*"
+ruff = "*"
+
+[requires]
+python_version = "3.13"
+python_full_version = "3.13.5"
