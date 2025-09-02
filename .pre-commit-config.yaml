@@ -16,11 +16,13 @@ repos:
         args: [--exit-zero]  # 適宜。エラーで止めたい場合は削除
         # ↑ exit-zero を外せば警告をエラー扱いにしてコミットを止められます
 
-  # flake8（プラグインで拡張しやすいリンタ）
+  # flake8（複雑度チェック専用）
+  # スタイルチェックはruffに委ね、複雑度チェック（C90認知的複雑度）のみ実行
+  # これによりruffとの設定矛盾（行長制限等）を回避
   - repo: https://github.com/pycqa/flake8
     rev: 7.3.0
     hooks:
       - id: flake8
         additional_dependencies:
-          - flake8-cognitive-complexity==0.1.0  # 認知的複雑度プラグイン（必要に応じて）
-        args: [--max-cognitive-complexity=7]
+          - flake8-cognitive-complexity==0.1.0  # 認知的複雑度プラグイン
+        args: [--select=C, --max-cognitive-complexity=7]
