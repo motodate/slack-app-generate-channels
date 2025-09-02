@@ -1,8 +1,52 @@
-## 全般
-- @docs/spec 内に本システムの要件 や TDDを実践するためのテストリストが記載されている。
-- 重要: 情報の2重管理は修正漏れの危険性があるため、CLAUDE.md (本ドキュメント) にはプロジェクトにフォーカスした概要、各資料の場所、開発方針を記載するする。
-- プロジェクト変更があった際には @docs 側の資料を修正する。
-- 技術仕様はmcpのcontext7を参照する
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## プロジェクト概要
+
+Slack上で特定のメンバーを含む新しいプライベートチャンネルを簡易的に作成するPython製のSlackアプリです。
+
+### アーキテクチャ
+- **言語**: Python 3.13
+- **フレームワーク**: Slack Bolt for Python (slack-sdk)
+- **実行環境**: pipenv
+- **実行モード**: ソケットモード (プロトタイプ段階)
+
+### 主要機能
+- モーダルUIでチャンネル名とメンバーのメールアドレスを一括入力
+- 入力されたメールアドレスからSlackユーザーを解決
+- 入力内容の事前確認ステップを設けて誤入力を防止
+- 指定されたチャンネル名でプライベートチャンネルを作成しメンバーを招待
+- チャンネル作成後、初期メッセージ、トピック、説明文を自動設定
+
+## コマンド
+
+### テスト実行
+```bash
+pipenv run pytest -q           # 全テストを静かに実行
+pipenv run pytest -q -v       # 全テストを詳細に実行
+pipenv run pytest tests/path_to_test.py  # 特定のテストファイルを実行
+```
+
+### コード品質チェック
+```bash
+pipenv run ruff check          # Ruffによるリンティング
+pipenv run ruff check --fix    # 自動修正可能な問題を修正
+pipenv run flake8 --select=C   # 複雑性チェック (認知的複雑度)
+pipenv run ruff check --select C901  # McCabeの循環的複雑度チェック
+```
+
+### 開発環境
+```bash
+pipenv install --dev          # 開発依存関係のインストール
+pipenv shell                  # 仮想環境の有効化
+```
+
+## 重要な資料の場所
+
+- **要件定義**: `docs/spec/requirements.md` - システムの詳細要件とAPI仕様
+- **テストケース**: `docs/spec/unit_test_cases.md` - TDD実践用のテストリスト
+- **技術仕様**: mcpのcontext7を参照
 
 
 ## 開発方針 (BDD)
