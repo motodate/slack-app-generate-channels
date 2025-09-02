@@ -6,6 +6,7 @@ pythonpath = ["."]
 [tool.ruff]
 target-version = "py313"
 line-length = 100
+fix = false
 
 [tool.ruff.lint]
 select = ["E","F","I","C90"]         # C90: cyclomatic complexity (軽いガード)
