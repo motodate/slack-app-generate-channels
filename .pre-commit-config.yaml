@@ -1,7 +1,7 @@
 repos:
   # Ruff（高速リンタ）
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.11   # 利用するバージョンを固定してください
+    rev: v0.12.11
     hooks:
       - id: ruff
         args: [--no-fix]   # 自動修正をしない
@@ -10,7 +10,7 @@ repos:
 
   # Pylint（Python標準の詳細リンタ）
   - repo: https://github.com/pycqa/pylint
-    rev: v3.3.8   # 利用するバージョンを固定してください
+    rev: v3.3.8
     hooks:
       - id: pylint
         args: [--exit-zero]  # 適宜。エラーで止めたい場合は削除
@@ -18,7 +18,7 @@ repos:
 
   # flake8（プラグインで拡張しやすいリンタ）
   - repo: https://github.com/pycqa/flake8
-    rev: v7.3.0
+    rev: 7.3.0
     hooks:
       - id: flake8
         additional_dependencies:
