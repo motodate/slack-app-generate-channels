@@ -68,7 +68,7 @@ def handle_modal_submission(ack, view, client, body):
         emails = parse_email_addresses(emails_text)
 
         # ユーザー解決処理を実行
-        user_ids, not_found_emails = resolve_users(client, emails)
+        user_info_list, not_found_emails = resolve_users(client, emails)
     except Exception as e:
         from app.user_resolver import AllUsersNotFoundError
 
@@ -95,11 +95,16 @@ def handle_modal_submission(ack, view, client, body):
         return
 
     # 確認モーダルのブロックを構築
+    # 表示名のリストを生成
+    display_names = [user_info["display_name"] for user_info in user_info_list]
     blocks = [
         {"type": "section", "text": {"type": "mrkdwn", "text": f"*チャンネル名:* {channel_name}"}},
         {
             "type": "section",
-            "text": {"type": "mrkdwn", "text": f"*招待するユーザー:*\n• {', '.join(user_ids)}"},
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*招待するユーザー:*\n• {', '.join(display_names)}",
+            },
         },
     ]
 
@@ -138,6 +143,8 @@ def handle_modal_submission(ack, view, client, body):
     # チャンネル情報をprivate_metadataに保存
     import json
 
+    # UserIDのリストを抽出
+    user_ids = [user_info["id"] for user_info in user_info_list]
     metadata = {"channel_name": channel_name, "user_ids": user_ids}
 
     # 確認モーダルを表示（新しいモーダルとして開く）
@@ -193,6 +200,10 @@ def handle_confirmation_button(ack, action, body, client):
     channel_name = metadata.get("channel_name")
     user_ids = metadata.get("user_ids", [])
     user_id = body["user"]["id"]
+
+    # 作成者を招待リストに追加（重複排除）
+    if user_id not in user_ids:
+        user_ids.append(user_id)
 
     logging.info(f"チャンネル作成開始: name={channel_name}, user_ids={user_ids}")
 

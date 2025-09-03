@@ -4,23 +4,38 @@ class AllUsersNotFoundError(Exception):
     pass
 
 
+def _extract_display_name(user_data):
+    """ユーザーデータから表示名を抽出（空文字の場合はユーザーIDを使用）"""
+    return user_data.get("profile", {}).get("display_name", "") or user_data["id"]
+
+
+def _process_user_email(slack_client, email):
+    """メールアドレスからユーザー情報を取得"""
+    try:
+        response = slack_client.users_lookupByEmail(email=email)
+        if response["ok"] and not response["user"]["deleted"]:
+            user_data = response["user"]
+            display_name = _extract_display_name(user_data)
+            return {"id": user_data["id"], "display_name": display_name}, None
+        else:
+            return None, email
+    except Exception:
+        return None, email
+
+
 def resolve_users(slack_client, email_list):
-    user_ids = []
+    user_info_list = []
     not_found_emails = []
 
     for email in email_list:
-        try:
-            response = slack_client.users_lookupByEmail(email=email)
-            if response["ok"] and not response["user"]["deleted"]:
-                user_ids.append(response["user"]["id"])
-            else:
-                not_found_emails.append(email)
-        except Exception:
-            # API呼び出しでエラーが発生した場合は見つからないメールとして処理
-            not_found_emails.append(email)
+        user_info, not_found_email = _process_user_email(slack_client, email)
+        if user_info:
+            user_info_list.append(user_info)
+        if not_found_email:
+            not_found_emails.append(not_found_email)
 
     # 全員が見つからなかった場合は例外を発生
-    if len(user_ids) == 0 and len(not_found_emails) > 0:
+    if not user_info_list and not_found_emails:
         raise AllUsersNotFoundError("All users not found")
 
-    return user_ids, not_found_emails
+    return user_info_list, not_found_emails

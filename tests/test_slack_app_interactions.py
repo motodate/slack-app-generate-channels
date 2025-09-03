@@ -2,6 +2,7 @@
 仕様: Slack BoltアプリのUI/インタラクション機能
 """
 
+import json
 from unittest.mock import Mock
 
 from slack_bolt import BoltRequest
@@ -76,7 +77,13 @@ def test_modal_submission_integrates_user_resolution_and_confirmation_display():
 
     # UserResolverをモック化
     with patch("app.slack_app.resolve_users") as mock_resolve_users:
-        mock_resolve_users.return_value = (["U111", "U222"], [])
+        mock_resolve_users.return_value = (
+            [
+                {"id": "U111", "display_name": "ユーザー1"},
+                {"id": "U222", "display_name": "ユーザー2"},
+            ],
+            [],
+        )
 
         # モーダル送信ハンドラーを実行
         handle_modal_submission(ack=ack, view=view, client=client, body=body)
@@ -111,7 +118,7 @@ def test_modal_submission_integrates_user_resolution_and_confirmation_display():
             text_content = block["text"]["text"]
             if "test-channel" in text_content:
                 channel_info_found = True
-            if "U111" in text_content or "U222" in text_content:
+            if "ユーザー1" in text_content or "ユーザー2" in text_content:
                 user_info_found = True
         if block["type"] == "actions":
             action_buttons_found = True
@@ -153,7 +160,10 @@ def test_modal_submission_with_not_found_emails():
 
     # UserResolver：一部のユーザーが見つからない場合をモック化
     with patch("app.slack_app.resolve_users") as mock_resolve_users:
-        mock_resolve_users.return_value = (["U111"], ["notfound@example.com"])
+        mock_resolve_users.return_value = (
+            [{"id": "U111", "display_name": "ユーザー1"}],
+            ["notfound@example.com"],
+        )
 
         # モーダル送信ハンドラーを実行
         handle_modal_submission(ack=ack, view=view, client=client, body=body)
@@ -190,7 +200,7 @@ def test_modal_submission_with_not_found_emails():
             text_content = block["text"]["text"]
             if "test-channel" in text_content:
                 channel_info_found = True
-            if "U111" in text_content:
+            if "ユーザー1" in text_content:
                 user_info_found = True
             if "notfound@example.com" in text_content:
                 not_found_info_found = True
@@ -234,7 +244,9 @@ def test_confirmation_button_successful_channel_creation():
 
     # チャンネル作成とメンバー招待が実行される
     client.conversations_create.assert_called_once_with(name="test-channel", is_private=True)
-    client.conversations_invite.assert_called_once_with(channel="C987654321", users="U111,U222")
+    client.conversations_invite.assert_called_once_with(
+        channel="C987654321", users="U111,U222,U123456"
+    )
 
     # 完了通知DMが送信される
     client.chat_postMessage.assert_called()
@@ -348,7 +360,7 @@ def test_modal_submission_uses_views_open_not_update():
 
     # UserResolverをモック化
     with patch("app.slack_app.resolve_users") as mock_resolve_users:
-        mock_resolve_users.return_value = (["U111"], [])
+        mock_resolve_users.return_value = ([{"id": "U111", "display_name": "ユーザー1"}], [])
 
         # モーダル送信ハンドラーを実行
         handle_modal_submission(ack=ack, view=view, client=client, body=body)
@@ -409,3 +421,135 @@ def test_modal_submission_handles_all_users_not_found_error():
     view_data = call_kwargs["view"]
     assert "エラー" in view_data["title"]["text"]
     assert "見つかりませんでした" in str(view_data["blocks"])
+
+
+def test_confirmation_modal_shows_display_names_not_user_ids():
+    """確認モーダル表示（表示名）: ユーザー解決後、
+    解決されたユーザーがUserIDではなく表示名で表示される
+    """
+    from unittest.mock import patch
+
+    from app.slack_app import handle_modal_submission
+
+    # ack()とclientのモック
+    ack = Mock()
+    client = Mock()
+    view = {
+        "id": "V123456",
+        "callback_id": "channel_creation_modal",
+        "state": {
+            "values": {
+                "channel_name_input": {"channel_name": {"value": "test-channel"}},
+                "member_emails_input": {"member_emails": {"value": "user1@example.com"}},
+            }
+        },
+    }
+    body = {"user": {"id": "U123456"}, "trigger_id": "123456.987654.abcdef"}
+
+    # UserResolverをモック化して、表示名付きのユーザー情報を返す
+    with patch("app.slack_app.resolve_users") as mock_resolve_users:
+        mock_resolve_users.return_value = ([{"id": "U111", "display_name": "田中太郎"}], [])
+
+        # モーダル送信ハンドラーを実行
+        handle_modal_submission(ack=ack, view=view, client=client, body=body)
+
+    # 期待結果：確認モーダルに表示名が表示される
+    ack.assert_called_once()
+    client.views_open.assert_called_once()
+
+    # モーダルの内容検証
+    modal_call_args = client.views_open.call_args
+    call_kwargs = modal_call_args[1] if modal_call_args[1] else modal_call_args[0][0]
+
+    view_data = call_kwargs["view"]
+    blocks_text = str(view_data["blocks"])
+
+    # UserID（U111）ではなく表示名（田中太郎）が表示されることを確認
+    assert "田中太郎" in blocks_text
+    assert "U111" not in blocks_text
+
+
+def test_channel_creator_automatically_added_to_invite_list():
+    """作成者自動参加: チャンネル作成者は自動的に招待リストに含まれる"""
+
+    from app.slack_app import handle_confirmation_button
+
+    # ack()とclientのモック
+    ack = Mock()
+    client = Mock()
+    action = Mock()
+
+    # private_metadataに作成者以外のユーザーIDのみ含まれる状況を設定
+    metadata = {"channel_name": "test-channel", "user_ids": ["U111", "U222"]}
+    body = {
+        "user": {"id": "U123456"},  # 作成者のUserID
+        "view": {"id": "V123456", "private_metadata": json.dumps(metadata)},
+    }
+
+    # チャンネル作成API成功をモック化
+    client.conversations_create.return_value = {"ok": True, "channel": {"id": "C987654321"}}
+    client.conversations_invite.return_value = {"ok": True}
+
+    # 確認ボタンハンドラーを実行
+    handle_confirmation_button(ack=ack, action=action, body=body, client=client)
+
+    # 期待結果：作成者も招待リストに含まれる
+    client.conversations_invite.assert_called_once()
+    call_args = client.conversations_invite.call_args[1]
+    invited_users = call_args["users"].split(",")
+
+    # 作成者（U123456）が招待リストに含まれていることを確認
+    assert "U123456" in invited_users
+    # 元々のユーザーも含まれることを確認
+    assert "U111" in invited_users
+    assert "U222" in invited_users
+
+
+def test_channel_creator_deduplication_when_explicitly_specified():
+    """重複排除（作成者）: 作成者が明示的にメールアドレスリストに含まれている場合でも重複しない"""
+    from unittest.mock import patch
+
+    from app.slack_app import handle_modal_submission
+
+    # ack()とclientのモック
+    ack = Mock()
+    client = Mock()
+    view = {
+        "id": "V123456",
+        "callback_id": "channel_creation_modal",
+        "state": {
+            "values": {
+                "channel_name_input": {"channel_name": {"value": "test-channel"}},
+                "member_emails_input": {
+                    "member_emails": {"value": "creator@example.com, user1@example.com"}
+                },
+            }
+        },
+    }
+    body = {"user": {"id": "U123456"}, "trigger_id": "123456.987654.abcdef"}
+
+    # UserResolverをモック化（作成者も含む）
+    with patch("app.slack_app.resolve_users") as mock_resolve_users:
+        mock_resolve_users.return_value = (
+            [
+                {"id": "U123456", "display_name": "作成者"},  # 作成者
+                {"id": "U111", "display_name": "田中太郎"},
+            ],
+            [],
+        )
+
+        # モーダル送信ハンドラーを実行
+        handle_modal_submission(ack=ack, view=view, client=client, body=body)
+
+    # private_metadataから作成者の重複が排除されていることを確認
+    modal_call_args = client.views_open.call_args
+    call_kwargs = modal_call_args[1] if modal_call_args[1] else modal_call_args[0][0]
+
+    import json
+
+    metadata = json.loads(call_kwargs["view"]["private_metadata"])
+    user_ids = metadata["user_ids"]
+
+    # 作成者が1回だけ含まれることを確認（重複しない）
+    creator_count = user_ids.count("U123456")
+    assert creator_count == 1
