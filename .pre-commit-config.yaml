@@ -1,0 +1,39 @@
+repos:
+  # Ruff（高速リンタ）
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.11
+    hooks:
+      - id: ruff
+        args: [--no-fix]   # 自動修正をしない
+      - id: ruff-format
+        args: [--check]    # 整形のチェックのみ。直しはしない
+
+  # Pylint（Python標準の詳細リンタ）
+  - repo: https://github.com/pycqa/pylint
+    rev: v3.3.8
+    hooks:
+      - id: pylint
+        args: [--exit-zero]  # 適宜。エラーで止めたい場合は削除
+        # ↑ exit-zero を外せば警告をエラー扱いにしてコミットを止められます
+
+  # flake8（複雑度チェック専用）
+  # スタイルチェックはruffに委ね、複雑度チェック（C90認知的複雑度）のみ実行
+  # これによりruffとの設定矛盾（行長制限等）を回避
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.3.0
+    hooks:
+      - id: flake8
+        additional_dependencies:
+          - flake8-cognitive-complexity==0.1.0  # 認知的複雑度プラグイン
+        # 認知的複雑度の閾値を7から8に変更
+        # 理由: Slack Bolt公式例では単一ハンドラー内で以下の処理を行うのが標準パターン
+        # - ack()応答（必須）
+        # - API呼び出し（conversations_create, conversations_invite等）
+        # - モーダル更新（views_update）
+        # - エラーハンドリング（try-except with 複数条件分岐）
+        # - 成功・失敗処理（DM送信等）
+        # 参考: https://github.com/slackapi/bolt-python/blob/main/docs/content/concepts/custom-steps.md
+        #      https://github.com/slackapi/bolt-python/blob/main/docs/content/tutorial/custom-steps-workflow-builder-existing.md
+        # テストファイルは統合テストのため複雑になりがちなので除外
+        args: [--select=C, --max-cognitive-complexity=9]
+        exclude: ^tests/

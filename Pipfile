@@ -5,11 +5,16 @@ name = "pypi"
 
 [packages]
 slack-sdk = "*"
+slack-bolt = "*"
 
 [dev-packages]
 pytest = "*"
 black = "*"
 ruff = "*"
+pylint = "*"
+flake8 = "*"
+pre-commit = "*"
+flake8-cognitive-complexity = "*"
 
 [requires]
 python_version = "3.13"
