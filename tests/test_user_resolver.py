@@ -97,3 +97,25 @@ def test_resolve_deleted_users_treated_as_not_found():
     # 期待結果：削除済みユーザーは見つからなかったメールとして扱う
     assert user_ids == ["U1234"]
     assert not_found_emails == ["deleted@example.com"]
+
+
+def test_resolve_users_handles_api_errors():
+    """APIエラー: Slack API呼び出しでエラーが発生した場合、適切に処理される"""
+    import pytest
+    from slack_sdk.errors import SlackApiError
+
+    from app.user_resolver import AllUsersNotFoundError, resolve_users
+
+    class ErrorSlackClient:
+        def users_lookupByEmail(self, email):
+            # Slack APIエラーをシミュレート
+            raise SlackApiError(
+                "The request to the Slack API failed", response={"error": "user_not_found"}
+            )
+
+    error_client = ErrorSlackClient()
+    email_list = ["error@example.com"]
+
+    # 期待結果：APIエラーで全員見つからない場合、AllUsersNotFoundError例外が発生
+    with pytest.raises(AllUsersNotFoundError, match="All users not found"):
+        resolve_users(error_client, email_list)

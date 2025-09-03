@@ -9,10 +9,14 @@ def resolve_users(slack_client, email_list):
     not_found_emails = []
 
     for email in email_list:
-        response = slack_client.users_lookupByEmail(email)
-        if response["ok"] and not response["user"]["deleted"]:
-            user_ids.append(response["user"]["id"])
-        else:
+        try:
+            response = slack_client.users_lookupByEmail(email=email)
+            if response["ok"] and not response["user"]["deleted"]:
+                user_ids.append(response["user"]["id"])
+            else:
+                not_found_emails.append(email)
+        except Exception:
+            # API呼び出しでエラーが発生した場合は見つからないメールとして処理
             not_found_emails.append(email)
 
     # 全員が見つからなかった場合は例外を発生

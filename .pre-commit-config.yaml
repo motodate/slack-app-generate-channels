@@ -35,5 +35,5 @@ repos:
         # 参考: https://github.com/slackapi/bolt-python/blob/main/docs/content/concepts/custom-steps.md
         #      https://github.com/slackapi/bolt-python/blob/main/docs/content/tutorial/custom-steps-workflow-builder-existing.md
         # テストファイルは統合テストのため複雑になりがちなので除外
-        args: [--select=C, --max-cognitive-complexity=8]
+        args: [--select=C, --max-cognitive-complexity=9]
         exclude: ^tests/

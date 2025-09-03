@@ -84,13 +84,13 @@ def test_modal_submission_integrates_user_resolution_and_confirmation_display():
     # 期待結果：ack()が呼ばれ、ユーザー解決処理が実行され、確認モーダルが表示される
     ack.assert_called_once()
     mock_resolve_users.assert_called_once_with(client, ["user1@example.com", "user2@example.com"])
-    client.views_update.assert_called_once()
+    client.views_open.assert_called_once()
 
     # 確認モーダルの内容検証
-    modal_call_args = client.views_update.call_args
+    modal_call_args = client.views_open.call_args
     call_kwargs = modal_call_args[1] if modal_call_args[1] else modal_call_args[0][0]
 
-    assert call_kwargs["view_id"] == "V123456"
+    assert call_kwargs["trigger_id"] == "123456.987654.abcdef"
 
     view_data = call_kwargs["view"]
     assert view_data["type"] == "modal"
@@ -163,13 +163,13 @@ def test_modal_submission_with_not_found_emails():
     mock_resolve_users.assert_called_once_with(
         client, ["user1@example.com", "notfound@example.com"]
     )
-    client.views_update.assert_called_once()
+    client.views_open.assert_called_once()
 
     # 確認モーダルの内容検証
-    modal_call_args = client.views_update.call_args
+    modal_call_args = client.views_open.call_args
     call_kwargs = modal_call_args[1] if modal_call_args[1] else modal_call_args[0][0]
 
-    assert call_kwargs["view_id"] == "V123456"
+    assert call_kwargs["trigger_id"] == "123456.987654.abcdef"
 
     view_data = call_kwargs["view"]
     assert view_data["type"] == "modal"
@@ -323,3 +323,89 @@ def test_confirmation_button_permission_error():
     dm_call = client.chat_postMessage.call_args
     assert dm_call[1]["channel"] == "U123456"
     assert "権限がありません" in dm_call[1]["text"]
+
+
+def test_modal_submission_uses_views_open_not_update():
+    """モーダル送信時: views.updateではなくviews.openで新しいモーダルを表示する"""
+    from unittest.mock import patch
+
+    from app.slack_app import handle_modal_submission
+
+    # ack()とclientのモック
+    ack = Mock()
+    client = Mock()
+    view = {
+        "id": "V123456",
+        "callback_id": "channel_creation_modal",
+        "state": {
+            "values": {
+                "channel_name_input": {"channel_name": {"value": "test-channel"}},
+                "member_emails_input": {"member_emails": {"value": "user1@example.com"}},
+            }
+        },
+    }
+    body = {"user": {"id": "U123456"}, "trigger_id": "123456.987654.abcdef"}
+
+    # UserResolverをモック化
+    with patch("app.slack_app.resolve_users") as mock_resolve_users:
+        mock_resolve_users.return_value = (["U111"], [])
+
+        # モーダル送信ハンドラーを実行
+        handle_modal_submission(ack=ack, view=view, client=client, body=body)
+
+    # 期待結果：views.updateではなくviews.openが呼ばれる
+    ack.assert_called_once()
+    client.views_update.assert_not_called()
+    client.views_open.assert_called_once()
+
+    # 新しいモーダルの内容検証
+    modal_call_args = client.views_open.call_args
+    call_kwargs = modal_call_args[1] if modal_call_args[1] else modal_call_args[0][0]
+
+    assert call_kwargs["trigger_id"] == "123456.987654.abcdef"
+    view_data = call_kwargs["view"]
+    assert view_data["callback_id"] == "channel_creation_confirmation"
+
+
+def test_modal_submission_handles_all_users_not_found_error():
+    """全ユーザー不在エラー: AllUsersNotFoundError例外が発生した場合、エラーモーダルを表示する"""
+    from unittest.mock import patch
+
+    from app.slack_app import handle_modal_submission
+
+    # ack()とclientのモック
+    ack = Mock()
+    client = Mock()
+    view = {
+        "id": "V123456",
+        "callback_id": "channel_creation_modal",
+        "state": {
+            "values": {
+                "channel_name_input": {"channel_name": {"value": "test-channel"}},
+                "member_emails_input": {"member_emails": {"value": "notfound@example.com"}},
+            }
+        },
+    }
+    body = {"user": {"id": "U123456"}, "trigger_id": "123456.987654.abcdef"}
+
+    # UserResolverで全ユーザー不在例外をモック化
+    with patch("app.slack_app.resolve_users") as mock_resolve_users:
+        from app.user_resolver import AllUsersNotFoundError
+
+        mock_resolve_users.side_effect = AllUsersNotFoundError("All users not found")
+
+        # モーダル送信ハンドラーを実行
+        handle_modal_submission(ack=ack, view=view, client=client, body=body)
+
+    # 期待結果：ack()が呼ばれ、エラーモーダルが表示される
+    ack.assert_called_once()
+    client.views_open.assert_called_once()
+
+    # エラーモーダルの内容検証
+    modal_call_args = client.views_open.call_args
+    call_kwargs = modal_call_args[1] if modal_call_args[1] else modal_call_args[0][0]
+
+    assert call_kwargs["trigger_id"] == "123456.987654.abcdef"
+    view_data = call_kwargs["view"]
+    assert "エラー" in view_data["title"]["text"]
+    assert "見つかりませんでした" in str(view_data["blocks"])
