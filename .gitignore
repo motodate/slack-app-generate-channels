@@ -64,7 +64,6 @@ Pipfile.lock
 # Slack app credentials
 .slack_config
 slack_config.json
-SLACK_*
 *_token*
 *_secret*
 
