@@ -46,7 +46,7 @@ pipenv shell                  # 仮想環境の有効化
 
 - **要件定義**: `docs/spec/requirements.md` - システムの詳細要件とAPI仕様
 - **テストケース**: `docs/spec/unit_test_cases.md` - TDD実践用のテストリスト
-- **技術仕様**: mcpのcontext7を参照
+- **Slack技術仕様**: Slack Bolt for Python、Slack API仕様、モーダル・UI実装詳細についてはmcp serverのcontext7を参照すること
 
 
 ## 開発方針 (BDD)
