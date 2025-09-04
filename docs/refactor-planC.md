@@ -75,6 +75,12 @@ Plan C（DDD/レイヤー分離）を現状コード規模に合わせて縮小�
 - [ ] `_get_error_message` の責務見直し（Facade/Serviceに寄せる是非をレビュー）。
 - [ ] 未使用ヘルパ・重複ロジック削除、import整頓。
 - [ ] E2E/回帰テスト実行、ログの粒度調整。
+ - [ ] SlackClient インスタンス再利用（各ハンドラ内で1回だけ生成して使い回し）。
+   - 対象: `app/slack_app.py` の `handle_shortcut` / `handle_modal_submission` / `handle_confirmation_button`
+ - [ ] 型ヒントの段階追加（挙動不変）。
+   - 対象: `app/infrastructure/slack_client.py` の公開メソッド、`app/user_resolver.py` の戻り値など。
+ - [ ] `__signature__` ハック撤廃（テスト見直し）。
+   - 方針: 構造テストを `inspect.signature(SlackClient.__init__)` で検証するよう更新し、クラス側の `__signature__` を削除。
 
 ---
 ## 互換性コミットメント（既存テストを壊さないための約束）
@@ -101,26 +107,6 @@ Plan C（DDD/レイヤー分離）を現状コード規模に合わせて縮小�
   - 対策: Facadeは薄く、VO/Serviceも最小機能から。YAGNIを徹底。
 
 ---
-## レビュー所見とフォローアップ方針（2025-09-04）
-外部レビュー（motodate/Claude Code）の要点をPlan C‑Liteに反映。
-
-### 強み（現状維持）
-- Facade 集約は適切で単一責任を満たす。
-- 互換性（既存テスト・UI文言・`views_open` 使用）を維持。
-- Facade は薄く、モック容易性とパフォーマンスに問題なし。
-
-### 改善提案と対応（優先度順）
-1) 小リファクタ（安全・挙動不変）
-   - `SlackClient(client)` の重複生成をやめ、各ハンドラ内で1回だけ生成して再利用。
-   - 対応: Phase 5 のクリーンアップで実施（`app/slack_app.py`）。
-2) 型ヒントの追加（安全・挙動不変）
-   - Facade の公開メソッドと `user_resolver` の戻り値等に型注釈を付与。
-   - 対応: 独立の小PR（`chore(types)`）として早期に実施可。
-3) `__signature__` オーバーライドの解消（低優先）
-   - 構造テストを `inspect.signature(cls.__init__)` で検証する形に見直し、ハックを撤廃。
-   - 対応: Phase 5 のテスト整備時に実施。
-
----
 ## 実装スケジュールとPR分割（目安）
 | PR | 内容 | 依存 | 目安工数 |
 |---|---|---|---|
@@ -132,18 +118,12 @@ Plan C（DDD/レイヤー分離）を現状コード規模に合わせて縮小�
 
 合計: 7–9.5h（従来Plan Cの14–19hから圧縮）。
 
-### 補助PR（小粒・随時）
-- PR-aux1: chore(refactor) SlackClient インスタンス再利用（各ハンドラで1回生成）
-- PR-aux2: chore(types) Facade/Resolver に型ヒントを段階追加
-- PR-aux3: test/cleanup `__signature__` ハック撤廃（構造テスト見直し）
-
 ---
 ## 次のステップ
 1. 本ドキュメント（Plan C‑Lite）の承認。
 2. PR1のレビューとマージ（実装済み: Facade導入＋内部置換、振る舞い不変）。
 3. 互換性確認（可能ならローカルでテスト実行／CI 上で確認）。
-4. PR-aux1/PR-aux2 の実施タイミングを決定（小PRで安全に先行可）。
-5. PR2の着手: VO導入＋既存関数ラッパー化（`ChannelName`, `EmailAddressList`）。
+4. PR2の着手: VO導入＋既存関数ラッパー化（`ChannelName`, `EmailAddressList`）。
 
 ---
 ## 参考（前版Plan Cとの差分）
