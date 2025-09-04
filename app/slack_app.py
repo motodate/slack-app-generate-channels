@@ -4,9 +4,17 @@ import os
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
+from app.application.channel_creation_service import ChannelCreationService
 from app.channel_name_normalizer import normalize_channel_name
 from app.email_address_parser import parse_email_addresses
 from app.infrastructure.slack_client import SlackClient
+from app.presentation.modal_builder import (
+    build_confirmation_modal,
+    build_error_modal,
+    build_initial_modal,
+    build_processing_modal,
+    build_success_modal,
+)
 from app.user_resolver import resolve_users
 
 
@@ -14,47 +22,8 @@ def handle_shortcut(ack, shortcut, client):
     """ショートカットハンドラー"""
     ack()
 
-    # 初期チャンネル作成モーダルを表示
-    SlackClient(client).open_view(
-        trigger_id=shortcut["trigger_id"],
-        view={
-            "type": "modal",
-            "callback_id": "channel_creation_modal",
-            "title": {"type": "plain_text", "text": "チャンネル作成"},
-            "submit": {"type": "plain_text", "text": "確認する"},
-            "close": {"type": "plain_text", "text": "キャンセル"},
-            "blocks": [
-                {
-                    "type": "input",
-                    "block_id": "channel_name_input",
-                    "label": {"type": "plain_text", "text": "チャンネル名"},
-                    "element": {
-                        "type": "plain_text_input",
-                        "action_id": "channel_name",
-                        "placeholder": {"type": "plain_text", "text": "例: project-alpha"},
-                        "max_length": 80,
-                    },
-                },
-                {
-                    "type": "input",
-                    "block_id": "member_emails_input",
-                    "label": {"type": "plain_text", "text": "招待するメンバーのメールアドレス"},
-                    "element": {
-                        "type": "plain_text_input",
-                        "action_id": "member_emails",
-                        "multiline": True,
-                        "placeholder": {
-                            "type": "plain_text",
-                            "text": (
-                                "user1@example.com, user2@example.com\n"
-                                "（カンマまたは改行区切りで複数入力可能）"
-                            ),
-                        },
-                    },
-                },
-            ],
-        },
-    )
+    # 初期チャンネル作成モーダルを表示（ビルダー経由）
+    SlackClient(client).open_view(trigger_id=shortcut["trigger_id"], view=build_initial_modal())
 
 
 def handle_modal_submission(ack, view, client, body):
@@ -85,16 +54,9 @@ def handle_modal_submission(ack, view, client, body):
         else:
             error_message = f"ユーザー解決でエラーが発生しました: {str(e)}"
 
-        # エラーモーダルを表示
+        # エラーモーダルを表示（ビルダー）
         SlackClient(client).open_view(
-            trigger_id=body["trigger_id"],
-            view={
-                "type": "modal",
-                "title": {"type": "plain_text", "text": "エラー"},
-                "blocks": [
-                    {"type": "section", "text": {"type": "mrkdwn", "text": f"❌ {error_message}"}}
-                ],
-            },
+            trigger_id=body["trigger_id"], view=build_error_modal(error_message)
         )
         return
 
@@ -151,16 +113,15 @@ def handle_modal_submission(ack, view, client, body):
     user_ids = [user_info["id"] for user_info in user_info_list]
     metadata = {"channel_name": channel_name, "user_ids": user_ids}
 
-    # 確認モーダルを表示（新しいモーダルとして開く）
+    # 確認モーダルを表示（ビルダー）
     SlackClient(client).open_view(
         trigger_id=body["trigger_id"],
-        view={
-            "type": "modal",
-            "callback_id": "channel_creation_confirmation",
-            "title": {"type": "plain_text", "text": "作成確認"},
-            "private_metadata": json.dumps(metadata),
-            "blocks": blocks,
-        },
+        view=build_confirmation_modal(
+            channel_name=channel_name,
+            users=user_info_list,
+            not_found_emails=not_found_emails,
+            private_metadata_json=json.dumps(metadata),
+        ),
     )
 
 
@@ -183,19 +144,7 @@ def handle_confirmation_button(ack, action, body, client):
     # 「作成中...」モーダルに更新
     view = body["view"]
     logging.info(f"モーダル更新: view_id={view['id']}")
-    SlackClient(client).update_view(
-        view_id=view["id"],
-        view={
-            "type": "modal",
-            "title": {"type": "plain_text", "text": "作成中..."},
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {"type": "plain_text", "text": "チャンネルを作成しています..."},
-                }
-            ],
-        },
-    )
+    SlackClient(client).update_view(view_id=view["id"], view=build_processing_modal())
 
     # private_metadataからチャンネル情報を取得
     import json
@@ -212,35 +161,14 @@ def handle_confirmation_button(ack, action, body, client):
     logging.info(f"チャンネル作成開始: name={channel_name}, user_ids={user_ids}")
 
     try:
-        # チャンネル作成処理
+        # チャンネル作成処理（サービスへ委譲）
         logging.info(f"conversations_create実行: name={channel_name}, is_private=True")
-        response = SlackClient(client).create_channel(name=channel_name, is_private=True)
-        channel_id = response["channel"]["id"]
+        service = ChannelCreationService(SlackClient(client))
+        channel_id = service.create_private_channel(channel_name, user_ids)
         logging.info(f"チャンネル作成成功: channel_id={channel_id}")
 
-        # メンバー招待
-        if user_ids:
-            logging.info(f"メンバー招待実行: channel_id={channel_id}, users={user_ids}")
-            SlackClient(client).invite_users(channel_id=channel_id, user_ids=user_ids)
-            logging.info("メンバー招待完了")
-
         # 成功モーダルを表示
-        SlackClient(client).update_view(
-            view_id=view["id"],
-            view={
-                "type": "modal",
-                "title": {"type": "plain_text", "text": "完了"},
-                "blocks": [
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": f"✅ チャンネル `#{channel_name}` を作成しました！",
-                        },
-                    }
-                ],
-            },
-        )
+        SlackClient(client).update_view(view_id=view["id"], view=build_success_modal(channel_name))
 
         # 完了通知DMを送信
         SlackClient(client).post_message(
@@ -256,17 +184,8 @@ def handle_confirmation_button(ack, action, body, client):
         # エラーメッセージを取得
         error_message = _get_error_message(e)
 
-        # エラーモーダルを表示
-        SlackClient(client).update_view(
-            view_id=view["id"],
-            view={
-                "type": "modal",
-                "title": {"type": "plain_text", "text": "エラー"},
-                "blocks": [
-                    {"type": "section", "text": {"type": "mrkdwn", "text": f"❌ {error_message}"}}
-                ],
-            },
-        )
+        # エラーモーダルを表示（ビルダー）
+        SlackClient(client).update_view(view_id=view["id"], view=build_error_modal(error_message))
 
         # 権限不足の場合はDMでも通知
         if "permission" in str(e).lower():
