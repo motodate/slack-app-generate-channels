@@ -5,6 +5,7 @@ from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 from app.email_address_parser import parse_email_addresses
+from app.infrastructure.slack_client import SlackClient
 from app.user_resolver import resolve_users
 
 
@@ -13,7 +14,7 @@ def handle_shortcut(ack, shortcut, client):
     ack()
 
     # 初期チャンネル作成モーダルを表示
-    client.views_open(
+    SlackClient(client).open_view(
         trigger_id=shortcut["trigger_id"],
         view={
             "type": "modal",
@@ -82,7 +83,7 @@ def handle_modal_submission(ack, view, client, body):
             error_message = f"ユーザー解決でエラーが発生しました: {str(e)}"
 
         # エラーモーダルを表示
-        client.views_open(
+        SlackClient(client).open_view(
             trigger_id=body["trigger_id"],
             view={
                 "type": "modal",
@@ -148,7 +149,7 @@ def handle_modal_submission(ack, view, client, body):
     metadata = {"channel_name": channel_name, "user_ids": user_ids}
 
     # 確認モーダルを表示（新しいモーダルとして開く）
-    client.views_open(
+    SlackClient(client).open_view(
         trigger_id=body["trigger_id"],
         view={
             "type": "modal",
@@ -179,7 +180,7 @@ def handle_confirmation_button(ack, action, body, client):
     # 「作成中...」モーダルに更新
     view = body["view"]
     logging.info(f"モーダル更新: view_id={view['id']}")
-    client.views_update(
+    SlackClient(client).update_view(
         view_id=view["id"],
         view={
             "type": "modal",
@@ -210,18 +211,18 @@ def handle_confirmation_button(ack, action, body, client):
     try:
         # チャンネル作成処理
         logging.info(f"conversations_create実行: name={channel_name}, is_private=True")
-        response = client.conversations_create(name=channel_name, is_private=True)
+        response = SlackClient(client).create_channel(name=channel_name, is_private=True)
         channel_id = response["channel"]["id"]
         logging.info(f"チャンネル作成成功: channel_id={channel_id}")
 
         # メンバー招待
         if user_ids:
             logging.info(f"メンバー招待実行: channel_id={channel_id}, users={user_ids}")
-            client.conversations_invite(channel=channel_id, users=",".join(user_ids))
+            SlackClient(client).invite_users(channel_id=channel_id, user_ids=user_ids)
             logging.info("メンバー招待完了")
 
         # 成功モーダルを表示
-        client.views_update(
+        SlackClient(client).update_view(
             view_id=view["id"],
             view={
                 "type": "modal",
@@ -239,7 +240,7 @@ def handle_confirmation_button(ack, action, body, client):
         )
 
         # 完了通知DMを送信
-        client.chat_postMessage(
+        SlackClient(client).post_message(
             channel=user_id, text=f"チャンネル「#{channel_name}」の作成が完了しました。"
         )
 
@@ -253,7 +254,7 @@ def handle_confirmation_button(ack, action, body, client):
         error_message = _get_error_message(e)
 
         # エラーモーダルを表示
-        client.views_update(
+        SlackClient(client).update_view(
             view_id=view["id"],
             view={
                 "type": "modal",
@@ -266,7 +267,7 @@ def handle_confirmation_button(ack, action, body, client):
 
         # 権限不足の場合はDMでも通知
         if "permission" in str(e).lower():
-            client.chat_postMessage(
+            SlackClient(client).post_message(
                 channel=user_id,
                 text="チャンネル作成の権限がありません。ワークスペース管理者にお問い合わせください。",
             )
