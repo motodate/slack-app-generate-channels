@@ -1,3 +1,6 @@
+from app.infrastructure.slack_client import SlackClient
+
+
 class AllUsersNotFoundError(Exception):
     """全てのユーザーが見つからなかった場合の例外"""
 
@@ -9,10 +12,10 @@ def _extract_display_name(user_data):
     return user_data.get("profile", {}).get("display_name", "") or user_data["id"]
 
 
-def _process_user_email(slack_client, email):
+def _process_user_email(slack_api: SlackClient, email):
     """メールアドレスからユーザー情報を取得"""
     try:
-        response = slack_client.users_lookupByEmail(email=email)
+        response = slack_api.lookup_user_by_email(email=email)
         if response["ok"] and not response["user"]["deleted"]:
             user_data = response["user"]
             display_name = _extract_display_name(user_data)
@@ -26,9 +29,10 @@ def _process_user_email(slack_client, email):
 def resolve_users(slack_client, email_list):
     user_info_list = []
     not_found_emails = []
+    api = SlackClient(slack_client)
 
     for email in email_list:
-        user_info, not_found_email = _process_user_email(slack_client, email)
+        user_info, not_found_email = _process_user_email(api, email)
         if user_info:
             user_info_list.append(user_info)
         if not_found_email:
