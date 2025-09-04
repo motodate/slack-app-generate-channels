@@ -1,7 +1,7 @@
-from typing import Dict, List
+from typing import Any, Dict, List
 
 
-def build_initial_modal() -> Dict:
+def build_initial_modal() -> Dict[str, Any]:
     return {
         "type": "modal",
         "callback_id": "channel_creation_modal",
@@ -41,17 +41,17 @@ def build_initial_modal() -> Dict:
     }
 
 
-def _users_text(users: List[Dict]) -> str:
+def _users_text(users: List[Dict[str, Any]]) -> str:
     names = [u["display_name"] for u in users]
     return f"*招待するユーザー:*\n• {', '.join(names)}"
 
 
 def build_confirmation_modal(
     channel_name: str,
-    users: List[Dict],
+    users: List[Dict[str, Any]],
     not_found_emails: List[str],
     private_metadata_json: str,
-) -> Dict:
+) -> Dict[str, Any]:
     blocks = [
         {"type": "section", "text": {"type": "mrkdwn", "text": f"*チャンネル名:* {channel_name}"}},
         {"type": "section", "text": {"type": "mrkdwn", "text": _users_text(users)}},
@@ -95,7 +95,7 @@ def build_confirmation_modal(
     }
 
 
-def build_processing_modal() -> Dict:
+def build_processing_modal() -> Dict[str, Any]:
     return {
         "type": "modal",
         "title": {"type": "plain_text", "text": "作成中..."},
@@ -108,7 +108,7 @@ def build_processing_modal() -> Dict:
     }
 
 
-def build_success_modal(channel_name: str) -> Dict:
+def build_success_modal(channel_name: str) -> Dict[str, Any]:
     return {
         "type": "modal",
         "title": {"type": "plain_text", "text": "完了"},
@@ -124,7 +124,7 @@ def build_success_modal(channel_name: str) -> Dict:
     }
 
 
-def build_error_modal(error_message: str) -> Dict:
+def build_error_modal(error_message: str) -> Dict[str, Any]:
     return {
         "type": "modal",
         "title": {"type": "plain_text", "text": "エラー"},
