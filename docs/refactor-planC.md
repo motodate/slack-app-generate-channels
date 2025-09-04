@@ -32,7 +32,6 @@ Plan C（DDD/レイヤー分離）を現状コード規模に合わせて縮小�
   - `invite_users(channel_id, user_ids: list[str])` → `client.conversations_invite`
   - `post_message(channel, text)` → `client.chat_postMessage`
   - `lookup_user_by_email(email)` → `client.users_lookupByEmail`
-- [ ] エラー整形の方針: Slack SDK 例外→辞書的 `response.get("error")` を安全に取り出すユーティリティをFacade側に配置。
 - [x] 置換（内部のみ）: `app/slack_app.py` と `app/user_resolver.py` からの直接呼び出しをFacade経由に変更（関数シグネチャは維持）。
 - [x] テスト: 既存テストは変更不要。必要に応じてFacadeの単体テストを追加（モック）。
 
