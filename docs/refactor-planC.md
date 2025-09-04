@@ -75,12 +75,16 @@ Plan C（DDD/レイヤー分離）を現状コード規模に合わせて縮小�
 - [ ] `_get_error_message` の責務見直し（Facade/Serviceに寄せる是非をレビュー）。
 - [ ] 未使用ヘルパ・重複ロジック削除、import整頓。
 - [ ] E2E/回帰テスト実行、ログの粒度調整。
- - [ ] SlackClient インスタンス再利用（各ハンドラ内で1回だけ生成して使い回し）。
-   - 対象: `app/slack_app.py` の `handle_shortcut` / `handle_modal_submission` / `handle_confirmation_button`
- - [ ] 型ヒントの段階追加（挙動不変）。
-   - 対象: `app/infrastructure/slack_client.py` の公開メソッド、`app/user_resolver.py` の戻り値など。
- - [ ] `__signature__` ハック撤廃（テスト見直し）。
-   - 方針: 構造テストを `inspect.signature(SlackClient.__init__)` で検証するよう更新し、クラス側の `__signature__` を削除。
+- [ ] SlackClient インスタンス再利用（各ハンドラ内で1回だけ生成して使い回し）。
+  - 対象: `app/slack_app.py` の `handle_shortcut` / `handle_modal_submission` / `handle_confirmation_button`
+- [ ] 型ヒントの段階追加（挙動不変）。
+  - 対象: `app/infrastructure/slack_client.py` の公開メソッド、`app/user_resolver.py` の戻り値など。
+- [ ] `__signature__` ハック撤廃（テスト見直し）。
+  - 方針: 構造テストを `inspect.signature(SlackClient.__init__)` で検証するよう更新し、クラス側の `__signature__` を削除。
+- [ ] VOの等値性・ハッシュの実装（互換性維持）
+  - 対象: `ChannelName` / `EmailAddressList` に `__eq__` / `__hash__` を追加し、仕様テストを整備。
+- [ ] 正規化仕様の確認（連続ハイフンの扱い）
+  - 方針: 現状は互換性維持で連続ハイフンを保持。縮約する場合は仕様合意→テスト更新→実装の順で反映。
 
 ---
 ## 互換性コミットメント（既存テストを壊さないための約束）
@@ -117,6 +121,13 @@ Plan C（DDD/レイヤー分離）を現状コード規模に合わせて縮小�
 | PR5 | modal_builder関数化＋統合・整頓 | PR1–4 | 1.0–1.5h |
 
 合計: 7–9.5h（従来Plan Cの14–19hから圧縮）。
+
+### 補助PR（小粒・随時）
+- PR-aux1: chore(refactor) SlackClient インスタンス再利用（各ハンドラで1回生成）
+- PR-aux2: chore(types) Facade/Resolver に型ヒントを段階追加
+- PR-aux3: test/cleanup `__signature__` ハック撤廃（構造テスト見直し）
+- PR-aux4: chore(domain) VO 等値性（`__eq__`/`__hash__`）の実装＋仕様テスト
+- PR-aux5: feat(domain) 連続ハイフンの扱い方針を決定し、必要なら縮約の実装＋テスト更新（互換性レビュー必須）
 
 ---
 ## 次のステップ
