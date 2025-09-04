@@ -1,13 +1,8 @@
-def parse_email_addresses(text):
-    import re
+from typing import List
 
-    # カンマと改行の両方で分割
-    emails = re.split(r"[,\n]", text)
-    # 前後の空白をトリミングし、小文字に統一
-    emails = [email.strip().lower() for email in emails]
-    # 空文字列を除去し、重複を除去（順序を保持）
-    unique_emails = []
-    for email in emails:
-        if email and email not in unique_emails:
-            unique_emails.append(email)
-    return unique_emails
+from app.domain.email_address_list import EmailAddressList
+
+
+def parse_email_addresses(text: str) -> List[str]:
+    """既存互換シグネチャを維持しつつ、VOで正規化を委譲"""
+    return EmailAddressList.from_raw_string(text).values
