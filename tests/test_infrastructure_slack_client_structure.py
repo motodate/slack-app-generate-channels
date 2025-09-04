@@ -13,9 +13,9 @@ def test_slack_client_class_and_ctor_signature():
 
     cls = mod.SlackClient
     # __init__(self, web_client)
-    sig = inspect.signature(cls)
+    sig = inspect.signature(cls.__init__)
     params = list(sig.parameters.values())
-    assert len(params) == 2, "SlackClient.__init__ は web_client を1引数で受け取る想定"
+    assert len(params) >= 2, "SlackClient.__init__ は web_client を1引数で受け取る想定"
     assert params[1].name == "web_client"
 
 

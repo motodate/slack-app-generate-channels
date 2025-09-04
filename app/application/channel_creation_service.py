@@ -1,4 +1,7 @@
-from typing import List, Union
+from typing import TYPE_CHECKING, List, Union
+
+if TYPE_CHECKING:  # typing only
+    from app.domain.channel_name import ChannelName
 
 try:  # for type checkers only; avoids runtime import cycle
     from app.domain.channel_name import ChannelName  # noqa: F401
