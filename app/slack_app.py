@@ -4,6 +4,7 @@ import os
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
+from app.channel_name_normalizer import normalize_channel_name
 from app.email_address_parser import parse_email_addresses
 from app.infrastructure.slack_client import SlackClient
 from app.user_resolver import resolve_users
@@ -63,6 +64,8 @@ def handle_modal_submission(ack, view, client, body):
     try:
         # フォームデータを抽出
         channel_name = view["state"]["values"]["channel_name_input"]["channel_name"]["value"]
+        # Phase 2: VO 仕様に基づく正規化（既存ラッパー経由 / 挙動不変）
+        channel_name = normalize_channel_name(channel_name)
         emails_text = view["state"]["values"]["member_emails_input"]["member_emails"]["value"]
 
         # メールアドレスを解析
