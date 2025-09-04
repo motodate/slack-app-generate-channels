@@ -128,7 +128,6 @@ Plan C（DDD/レイヤー分離）を現状コード規模に合わせて縮小�
 - PR-aux3: test/cleanup `__signature__` ハック撤廃（構造テスト見直し）
 - PR-aux4: chore(domain) VO 等値性（`__eq__`/`__hash__`）の実装＋仕様テスト
 - PR-aux5: feat(domain) 連続ハイフンの扱い方針を決定し、必要なら縮約の実装＋テスト更新（互換性レビュー必須）
-
 ---
 ## 次のステップ
 1. 本ドキュメント（Plan C‑Lite）の承認。
