@@ -75,7 +75,7 @@ Plan C（DDD/レイヤー分離）を現状コード規模に合わせて縮小�
 - [ ] `_get_error_message` の責務見直し（Facade/Serviceに寄せる是非をレビュー）。
 - [ ] 未使用ヘルパ・重複ロジック削除、import整頓。
 - [ ] E2E/回帰テスト実行、ログの粒度調整。
-- [ ] SlackClient インスタンス再利用（各ハンドラ内で1回だけ生成して使い回し）。
+- [x] SlackClient インスタンス再利用（各ハンドラ内で1回だけ生成して使い回し）。
   - 対象: `app/slack_app.py` の `handle_shortcut` / `handle_modal_submission` / `handle_confirmation_button`
 - [ ] 型ヒントの段階追加（挙動不変）。
   - 対象: `app/infrastructure/slack_client.py` の公開メソッド、`app/user_resolver.py` の戻り値など。

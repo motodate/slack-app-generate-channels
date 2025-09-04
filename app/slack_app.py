@@ -23,7 +23,8 @@ def handle_shortcut(ack, shortcut, client):
     ack()
 
     # 初期チャンネル作成モーダルを表示（ビルダー経由）
-    SlackClient(client).open_view(trigger_id=shortcut["trigger_id"], view=build_initial_modal())
+    sc = SlackClient(client)
+    sc.open_view(trigger_id=shortcut["trigger_id"], view=build_initial_modal())
 
 
 def handle_modal_submission(ack, view, client, body):
@@ -55,9 +56,8 @@ def handle_modal_submission(ack, view, client, body):
             error_message = f"ユーザー解決でエラーが発生しました: {str(e)}"
 
         # エラーモーダルを表示（ビルダー）
-        SlackClient(client).open_view(
-            trigger_id=body["trigger_id"], view=build_error_modal(error_message)
-        )
+        sc = SlackClient(client)
+        sc.open_view(trigger_id=body["trigger_id"], view=build_error_modal(error_message))
         return
 
     # 確認モーダルのブロックを構築
@@ -114,7 +114,8 @@ def handle_modal_submission(ack, view, client, body):
     metadata = {"channel_name": channel_name, "user_ids": user_ids}
 
     # 確認モーダルを表示（ビルダー）
-    SlackClient(client).open_view(
+    sc = SlackClient(client)
+    sc.open_view(
         trigger_id=body["trigger_id"],
         view=build_confirmation_modal(
             channel_name=channel_name,
@@ -144,7 +145,8 @@ def handle_confirmation_button(ack, action, body, client):
     # 「作成中...」モーダルに更新
     view = body["view"]
     logging.info(f"モーダル更新: view_id={view['id']}")
-    SlackClient(client).update_view(view_id=view["id"], view=build_processing_modal())
+    sc = SlackClient(client)
+    sc.update_view(view_id=view["id"], view=build_processing_modal())
 
     # private_metadataからチャンネル情報を取得
     import json
@@ -163,15 +165,15 @@ def handle_confirmation_button(ack, action, body, client):
     try:
         # チャンネル作成処理（サービスへ委譲）
         logging.info(f"conversations_create実行: name={channel_name}, is_private=True")
-        service = ChannelCreationService(SlackClient(client))
+        service = ChannelCreationService(sc)
         channel_id = service.create_private_channel(channel_name, user_ids)
         logging.info(f"チャンネル作成成功: channel_id={channel_id}")
 
         # 成功モーダルを表示
-        SlackClient(client).update_view(view_id=view["id"], view=build_success_modal(channel_name))
+        sc.update_view(view_id=view["id"], view=build_success_modal(channel_name))
 
         # 完了通知DMを送信
-        SlackClient(client).post_message(
+        sc.post_message(
             channel=user_id, text=f"チャンネル「#{channel_name}」の作成が完了しました。"
         )
 
@@ -185,11 +187,11 @@ def handle_confirmation_button(ack, action, body, client):
         error_message = _get_error_message(e)
 
         # エラーモーダルを表示（ビルダー）
-        SlackClient(client).update_view(view_id=view["id"], view=build_error_modal(error_message))
+        sc.update_view(view_id=view["id"], view=build_error_modal(error_message))
 
         # 権限不足の場合はDMでも通知
         if "permission" in str(e).lower():
-            SlackClient(client).post_message(
+            sc.post_message(
                 channel=user_id,
                 text="チャンネル作成の権限がありません。ワークスペース管理者にお問い合わせください。",
             )
