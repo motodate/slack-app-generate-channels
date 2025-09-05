@@ -200,8 +200,9 @@ def handle_confirmation_button(ack, action, body, client):
 
 
 def handle_cancel_button(ack, action, body, client):
-    """キャンセルボタンアクションハンドラー: 即時 ack のみ（挙動不変）。"""
-    ack()
+    """キャンセルボタン: 確認画面 → 入力画面に戻す（モーダルを更新）。"""
+    # 入力用の初期モーダルに差し替え（Stackは維持しつつ画面を戻す）
+    ack(response_action="update", view=build_initial_modal())
 
 
 def create_app():

@@ -92,6 +92,7 @@ def build_confirmation_modal(
         "type": "modal",
         "callback_id": "channel_creation_confirmation",
         "title": {"type": "plain_text", "text": MODAL_TITLES["CONFIRM"]},
+        "close": {"type": "plain_text", "text": "キャンセル"},
         "private_metadata": private_metadata_json,
         "blocks": blocks,
     }
