@@ -553,3 +553,20 @@ def test_channel_creator_deduplication_when_explicitly_specified():
     # 作成者が1回だけ含まれることを確認（重複しない）
     creator_count = user_ids.count("U123456")
     assert creator_count == 1
+
+
+def test_cancel_button_ack_only():
+    """キャンセルボタン: ack され、API呼び出しやモーダル更新は行われない"""
+    from app.slack_app import handle_cancel_button
+
+    ack = Mock()
+    client = Mock()
+    action = {"action_id": "cancel_creation"}
+    body = {"user": {"id": "U123456"}, "view": {"id": "V123456"}}
+
+    handle_cancel_button(ack=ack, action=action, body=body, client=client)
+
+    ack.assert_called_once()
+    client.views_update.assert_not_called()
+    client.conversations_create.assert_not_called()
+    client.conversations_invite.assert_not_called()
