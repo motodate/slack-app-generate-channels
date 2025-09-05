@@ -409,16 +409,13 @@ def test_modal_submission_handles_all_users_not_found_error():
         # モーダル送信ハンドラーを実行
         handle_modal_submission(ack=ack, view=view, client=client, body=body)
 
-    # 期待結果：ack()が呼ばれ、エラーモーダルが表示される
+    # 期待結果：ack()が呼ばれ、モーダルがエラー表示に更新される（スマホでも安定）
     ack.assert_called_once()
-    client.views_open.assert_called_once()
+    client.views_update.assert_called_once()
 
     # エラーモーダルの内容検証
-    modal_call_args = client.views_open.call_args
-    call_kwargs = modal_call_args[1] if modal_call_args[1] else modal_call_args[0][0]
-
-    assert call_kwargs["trigger_id"] == "123456.987654.abcdef"
-    view_data = call_kwargs["view"]
+    update_call = client.views_update.call_args
+    view_data = update_call[1]["view"]
     assert "エラー" in view_data["title"]["text"]
     assert "見つかりませんでした" in str(view_data["blocks"])
 
