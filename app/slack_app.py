@@ -57,9 +57,15 @@ def handle_modal_submission(ack, view, client, body):
         else:
             error_message = f"ユーザー解決でエラーが発生しました: {str(e)}"
 
-        # エラーモーダルを表示（ビルダー）
+        # エラーモーダルに差し替え（view_submissionは update の方がクライアント間で安定）
         sc = SlackClient(client)
-        sc.open_view(trigger_id=body["trigger_id"], view=build_error_modal(error_message))
+        curr_view = body.get("view", {}) or view
+        view_id = curr_view.get("id")
+        if view_id:
+            sc.update_view(view_id=view_id, view=build_error_modal(error_message))
+        else:
+            # フォールバック（通常は到達しない）
+            sc.open_view(trigger_id=body["trigger_id"], view=build_error_modal(error_message))
         return
 
     # UIブロックの構築は modal_builder 側へ集約済み（重複を避けるためここでは組み立てない）
