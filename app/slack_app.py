@@ -31,7 +31,6 @@ def handle_shortcut(ack, shortcut, client):
 
 def handle_modal_submission(ack, view, client, body):
     """モーダル送信ハンドラー：ユーザー解決から確認モーダル表示まで統合"""
-    ack()
 
     try:
         # フォームデータを抽出
@@ -57,15 +56,8 @@ def handle_modal_submission(ack, view, client, body):
         else:
             error_message = f"ユーザー解決でエラーが発生しました: {str(e)}"
 
-        # エラーモーダルに差し替え（view_submissionは update の方がクライアント間で安定）
-        sc = SlackClient(client)
-        curr_view = body.get("view", {}) or view
-        view_id = curr_view.get("id")
-        if view_id:
-            sc.update_view(view_id=view_id, view=build_error_modal(error_message))
-        else:
-            # フォールバック（通常は到達しない）
-            sc.open_view(trigger_id=body["trigger_id"], view=build_error_modal(error_message))
+        # エラーモーダルに差し替え（view_submission は ack で update を返すのが安定）
+        ack(response_action="update", view=build_error_modal(error_message))
         return
 
     # UIブロックの構築は modal_builder 側へ集約済み（重複を避けるためここでは組み立てない）
@@ -85,7 +77,8 @@ def handle_modal_submission(ack, view, client, body):
         token = store_meta(metadata)
         pm = json.dumps({"token": token})
 
-    # 確認モーダルを表示（ビルダー）
+    # 成功時は通常 ack の後、views.open で確認モーダルを表示
+    ack()
     sc = SlackClient(client)
     sc.open_view(
         trigger_id=body["trigger_id"],

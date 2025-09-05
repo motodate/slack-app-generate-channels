@@ -409,15 +409,15 @@ def test_modal_submission_handles_all_users_not_found_error():
         # モーダル送信ハンドラーを実行
         handle_modal_submission(ack=ack, view=view, client=client, body=body)
 
-    # 期待結果：ack()が呼ばれ、モーダルがエラー表示に更新される（スマホでも安定）
+    # 期待結果：ack() が response_action="update" で返され、エラー表示に差し替えられる
     ack.assert_called_once()
-    client.views_update.assert_called_once()
-
-    # エラーモーダルの内容検証
-    update_call = client.views_update.call_args
-    view_data = update_call[1]["view"]
-    assert "エラー" in view_data["title"]["text"]
+    kwargs = ack.call_args.kwargs
+    assert kwargs.get("response_action") == "update"
+    view_data = kwargs.get("view")
+    assert view_data and "エラー" in view_data["title"]["text"]
     assert "見つかりませんでした" in str(view_data["blocks"])
+    # API側の views_update は呼ばれない（ackで差し替え）
+    client.views_update.assert_not_called()
 
 
 def test_confirmation_modal_shows_display_names_not_user_ids():
