@@ -62,51 +62,7 @@ def handle_modal_submission(ack, view, client, body):
         sc.open_view(trigger_id=body["trigger_id"], view=build_error_modal(error_message))
         return
 
-    # 確認モーダルのブロックを構築
-    # 表示名のリストを生成
-    display_names = [user_info["display_name"] for user_info in user_info_list]
-    blocks = [
-        {"type": "section", "text": {"type": "mrkdwn", "text": f"*チャンネル名:* {channel_name}"}},
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"*招待するユーザー:*\n• {', '.join(display_names)}",
-            },
-        },
-    ]
-
-    # 見つからなかったメールアドレスがある場合は表示
-    if not_found_emails:
-        blocks.append(
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*見つからなかったメール:*\n• {', '.join(not_found_emails)}",
-                },
-            }
-        )
-
-    # 確認ボタンを追加
-    blocks.append(
-        {
-            "type": "actions",
-            "elements": [
-                {
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": "作成"},
-                    "action_id": "confirm_creation",
-                    "style": "primary",
-                },
-                {
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": "キャンセル"},
-                    "action_id": "cancel_creation",
-                },
-            ],
-        }
-    )
+    # UIブロックの構築は modal_builder 側へ集約済み（重複を避けるためここでは組み立てない）
 
     # チャンネル情報をprivate_metadataに保存
     import json
@@ -200,8 +156,14 @@ def handle_confirmation_button(ack, action, body, client):
 
 
 def handle_cancel_button(ack, action, body, client):
-    """キャンセルボタンアクションハンドラー: 即時 ack のみ（挙動不変）。"""
+    """キャンセルボタン: 確認画面 → 入力画面に戻す（views.update を使用）。"""
+    # まず3秒以内にack
     ack()
+    # その後、現在の view を初期モーダルに差し替え
+    view = body.get("view", {})
+    view_id = view.get("id")
+    if view_id:
+        SlackClient(client).update_view(view_id=view_id, view=build_initial_modal())
 
 
 def create_app():

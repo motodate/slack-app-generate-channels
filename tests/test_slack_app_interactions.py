@@ -555,8 +555,8 @@ def test_channel_creator_deduplication_when_explicitly_specified():
     assert creator_count == 1
 
 
-def test_cancel_button_ack_only():
-    """キャンセルボタン: ack され、API呼び出しやモーダル更新は行われない"""
+def test_cancel_button_updates_modal_back_to_initial():
+    """キャンセルボタン: 入力モーダルに差し替える（views_update を使う）"""
     from app.slack_app import handle_cancel_button
 
     ack = Mock()
@@ -566,7 +566,10 @@ def test_cancel_button_ack_only():
 
     handle_cancel_button(ack=ack, action=action, body=body, client=client)
 
+    # ack され、views_update が呼ばれることを検証
     ack.assert_called_once()
-    client.views_update.assert_not_called()
+    client.views_update.assert_called_once()
+    args, kwargs = client.views_update.call_args
+    assert kwargs["view"]["callback_id"] == "channel_creation_modal"
     client.conversations_create.assert_not_called()
     client.conversations_invite.assert_not_called()

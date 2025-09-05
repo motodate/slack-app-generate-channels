@@ -9,7 +9,7 @@ def build_initial_modal() -> Dict[str, Any]:
         "callback_id": "channel_creation_modal",
         "title": {"type": "plain_text", "text": MODAL_TITLES["CREATE"]},
         "submit": {"type": "plain_text", "text": "確認する"},
-        "close": {"type": "plain_text", "text": "キャンセル"},
+        "close": {"type": "plain_text", "text": "閉じる"},
         "blocks": [
             {
                 "type": "input",
@@ -81,7 +81,7 @@ def build_confirmation_modal(
                 },
                 {
                     "type": "button",
-                    "text": {"type": "plain_text", "text": "キャンセル"},
+                    "text": {"type": "plain_text", "text": "戻る"},
                     "action_id": ACTION_IDS["CANCEL"],
                 },
             ],
@@ -92,6 +92,7 @@ def build_confirmation_modal(
         "type": "modal",
         "callback_id": "channel_creation_confirmation",
         "title": {"type": "plain_text", "text": MODAL_TITLES["CONFIRM"]},
+        "close": {"type": "plain_text", "text": "閉じる"},
         "private_metadata": private_metadata_json,
         "blocks": blocks,
     }

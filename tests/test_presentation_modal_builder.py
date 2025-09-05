@@ -23,6 +23,10 @@ def test_build_confirmation_modal_includes_channel_users_and_optionally_not_foun
     )
     assert view["type"] == "modal"
     assert view["callback_id"] == "channel_creation_confirmation"
+    # close ボタンは「閉じる」であること
+    assert view["close"]["text"] == "閉じる"
+    # アクション行のボタンには「戻る」が含まれること
+    assert "戻る" in str(view["blocks"])
     blocks_text = str(view["blocks"])
     assert "test-channel" in blocks_text
     assert "太郎" in blocks_text
