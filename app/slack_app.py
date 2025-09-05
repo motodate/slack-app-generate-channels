@@ -8,6 +8,7 @@ from app.application.channel_creation_service import ChannelCreationService
 from app.channel_name_normalizer import normalize_channel_name
 from app.email_address_parser import parse_email_addresses
 from app.infrastructure.slack_client import SlackClient
+from app.presentation.error_messages import get_error_message_and_dm
 from app.presentation.modal_builder import (
     build_confirmation_modal,
     build_error_modal,
@@ -113,6 +114,14 @@ def handle_modal_submission(ack, view, client, body):
     user_ids = [user_info["id"] for user_info in user_info_list]
     metadata = {"channel_name": channel_name, "user_ids": user_ids}
 
+    # private_metadata が長すぎる場合はトークン参照に切り替え
+    pm = json.dumps(metadata)
+    if len(pm) > 2800:  # Slack 制限 3000 の手前でガード
+        from app.presentation.metadata_store import store as store_meta
+
+        token = store_meta(metadata)
+        pm = json.dumps({"token": token})
+
     # 確認モーダルを表示（ビルダー）
     sc = SlackClient(client)
     sc.open_view(
@@ -121,19 +130,9 @@ def handle_modal_submission(ack, view, client, body):
             channel_name=channel_name,
             users=user_info_list,
             not_found_emails=not_found_emails,
-            private_metadata_json=json.dumps(metadata),
+            private_metadata_json=pm,
         ),
     )
-
-
-def _get_error_message(e):
-    """例外からユーザー向けエラーメッセージを生成"""
-    if hasattr(e, "response") and e.response.get("error") == "name_taken":
-        return "このチャンネル名は既に使用されています。"
-    elif "permission" in str(e).lower():
-        return "チャンネル作成の権限がありません。管理者にお問い合わせください。"
-    else:
-        return f"チャンネル作成に失敗しました: {str(e)}"
 
 
 def handle_confirmation_button(ack, action, body, client):
@@ -152,6 +151,11 @@ def handle_confirmation_button(ack, action, body, client):
     import json
 
     metadata = json.loads(view.get("private_metadata", "{}"))
+    if "token" in metadata:
+        from app.presentation.metadata_store import retrieve as load_meta
+
+        loaded = load_meta(metadata["token"]) or {}
+        metadata = loaded
     channel_name = metadata.get("channel_name")
     user_ids = metadata.get("user_ids", [])
     user_id = body["user"]["id"]
@@ -183,18 +187,15 @@ def handle_confirmation_button(ack, action, body, client):
         if hasattr(e, "response"):
             logging.error(f"Slack APIレスポンス: {e.response}")
 
-        # エラーメッセージを取得
-        error_message = _get_error_message(e)
+        # エラーメッセージとDM方針を取得
+        error_message, send_dm = get_error_message_and_dm(e)
 
         # エラーモーダルを表示（ビルダー）
         sc.update_view(view_id=view["id"], view=build_error_modal(error_message))
 
-        # 権限不足の場合はDMでも通知
-        if "permission" in str(e).lower():
-            sc.post_message(
-                channel=user_id,
-                text="チャンネル作成の権限がありません。ワークスペース管理者にお問い合わせください。",
-            )
+        # 方針に応じてDMでも通知
+        if send_dm:
+            sc.post_message(channel=user_id, text=error_message)
 
 
 def create_app():
