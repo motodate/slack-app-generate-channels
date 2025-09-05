@@ -142,15 +142,25 @@ pipenv run flake8 --select=C
 ```
 slack-app-generate-channels/
 ├── app/
-│   ├── slack_app.py              # メインアプリケーション
-│   ├── channel_name_normalizer.py # チャンネル名正規化
-│   ├── email_address_parser.py   # メールアドレス解析
-│   └── user_resolver.py          # Slackユーザー解決
-├── tests/                        # テストファイル
-├── docs/spec/                    # 設計仕様書
-├── .env.example                  # 環境変数テンプレート
-├── Pipfile                       # 依存関係定義
-└── README.md                     # このファイル
+│   ├── slack_app.py                       # メイン (Bolt ルータ)
+│   ├── channel_name_normalizer.py         # チャンネル名正規化（VOラッパー）
+│   ├── email_address_parser.py            # メールアドレス解析（VOラッパー）
+│   ├── user_resolver.py                   # 互換APIラッパー（サービス呼び出し）
+│   ├── infrastructure/
+│   │   └── slack_client.py                # Slack SDK 薄いFacade
+│   ├── application/
+│   │   ├── user_resolver_service.py       # ユーザー解決サービス
+│   │   └── channel_creation_service.py    # チャンネル作成サービス
+│   └── presentation/
+│       ├── modal_builder.py               # モーダルのビルダー関数
+│       ├── constants.py                   # タイトル/アクションIDの定数
+│       ├── error_messages.py              # エラー文言＋DM方針の集約
+│       └── metadata_store.py              # private_metadata 長大時の一時ストア
+├── tests/                                  # テスト
+├── docs/                                   # 仕様・計画・PRノート
+├── .env.example                            # 環境変数テンプレート
+├── Pipfile                                  # 依存関係定義
+└── README.md                                # このファイル
 ```
 
 ## トラブルシューティング
@@ -168,6 +178,9 @@ slack-app-generate-channels/
 
 **Socket Mode 接続エラー**
 - App-Level Token が無効、または `connections:write` スコープが不足しています
+
+**確認モーダルのキャンセルで『!』が出る**
+- アプリが `cancel_creation` を受けて ack できていないと発生します。現行実装では `app.action(ACTION_IDS["CANCEL"])` を登録済みです。古いバージョンをお使いの場合は最新版に更新してください。
 
 ### ログの確認
 

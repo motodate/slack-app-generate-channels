@@ -95,9 +95,9 @@ sequenceDiagram
         
 - **チャンネル作成後の自動設定:**
     
-    - `chat.postMessage`: 「このチャンネルは @(作成者名) さんによって作成されました。」という初期メッセージを投稿する。
+    - `chat.postMessage`: （将来）初期メッセージの投稿を検討する。現行実装では作成者への完了DMのみ送信する。
         
-    - `conversations.setTopic` / `conversations.setPurpose`: トピックと説明を設定する。モーダルでの入力時に **250文字** の文字数制限を設け、バリデーションを行う。
+    - `conversations.setTopic` / `conversations.setPurpose`: （将来）トピックと説明の自動設定を検討する。現行実装では未実装。
         
 
 ### 2.3. エラーハンドリング詳細
@@ -133,7 +133,7 @@ sequenceDiagram
     
 - **レート制限:** APIからの429応答時、レスポンスヘッダーの **`Retry-After`値に従い** 、指数バックオフを伴うリトライを行う。Tier番号などの固定値には依存しない。
     
-- **冪等性:** `private_metadata`にリクエスト固有のUUIDを格納し、リトライによる二重作成を防止する。
+    - **冪等性/メタデータ:** `private_metadata` は Slack 制限（3000字）に抵触しないよう、長大化した場合は一時ストアのトークン参照に切り替える（TTLあり）。
     
 
 ### 3.3. セキュリティ (Slack APIスコープ)
