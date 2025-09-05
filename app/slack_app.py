@@ -200,9 +200,14 @@ def handle_confirmation_button(ack, action, body, client):
 
 
 def handle_cancel_button(ack, action, body, client):
-    """キャンセルボタン: 確認画面 → 入力画面に戻す（モーダルを更新）。"""
-    # 入力用の初期モーダルに差し替え（Stackは維持しつつ画面を戻す）
-    ack(response_action="update", view=build_initial_modal())
+    """キャンセルボタン: 確認画面 → 入力画面に戻す（views.update を使用）。"""
+    # まず3秒以内にack
+    ack()
+    # その後、現在の view を初期モーダルに差し替え
+    view = body.get("view", {})
+    view_id = view.get("id")
+    if view_id:
+        SlackClient(client).update_view(view_id=view_id, view=build_initial_modal())
 
 
 def create_app():

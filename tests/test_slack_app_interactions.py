@@ -556,7 +556,7 @@ def test_channel_creator_deduplication_when_explicitly_specified():
 
 
 def test_cancel_button_updates_modal_back_to_initial():
-    """キャンセルボタン: 入力モーダルに差し替える（response_action="update"）"""
+    """キャンセルボタン: 入力モーダルに差し替える（views_update を使う）"""
     from app.slack_app import handle_cancel_button
 
     ack = Mock()
@@ -566,13 +566,10 @@ def test_cancel_button_updates_modal_back_to_initial():
 
     handle_cancel_button(ack=ack, action=action, body=body, client=client)
 
-    # response_action="update" で入力モーダルが返ることを検証
-    assert ack.call_count == 1
-    kwargs = ack.call_args.kwargs
-    assert kwargs.get("response_action") == "update"
-    view = kwargs.get("view")
-    assert view and view.get("callback_id") == "channel_creation_modal"
-    # API呼び出しは行われない
-    client.views_update.assert_not_called()
+    # ack され、views_update が呼ばれることを検証
+    ack.assert_called_once()
+    client.views_update.assert_called_once()
+    args, kwargs = client.views_update.call_args
+    assert kwargs["view"]["callback_id"] == "channel_creation_modal"
     client.conversations_create.assert_not_called()
     client.conversations_invite.assert_not_called()
