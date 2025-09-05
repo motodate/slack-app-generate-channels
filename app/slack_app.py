@@ -8,6 +8,7 @@ from app.application.channel_creation_service import ChannelCreationService
 from app.channel_name_normalizer import normalize_channel_name
 from app.email_address_parser import parse_email_addresses
 from app.infrastructure.slack_client import SlackClient
+from app.presentation.constants import ACTION_IDS
 from app.presentation.error_messages import get_error_message_and_dm
 from app.presentation.modal_builder import (
     build_confirmation_modal,
@@ -198,6 +199,11 @@ def handle_confirmation_button(ack, action, body, client):
             sc.post_message(channel=user_id, text=error_message)
 
 
+def handle_cancel_button(ack, action, body, client):
+    """キャンセルボタンアクションハンドラー: 即時 ack のみ（挙動不変）。"""
+    ack()
+
+
 def create_app():
     """Slack Boltアプリケーションを作成"""
     app = App()
@@ -208,8 +214,9 @@ def create_app():
     # モーダル送信ハンドラー
     app.view("channel_creation_modal")(handle_modal_submission)
 
-    # 確認ボタンアクションハンドラー
-    app.action("confirm_creation")(handle_confirmation_button)
+    # 確認/キャンセル ボタンアクションハンドラー
+    app.action(ACTION_IDS["CONFIRM"])(handle_confirmation_button)
+    app.action(ACTION_IDS["CANCEL"])(handle_cancel_button)
 
     return app
 
